@@ -859,8 +859,11 @@
                 const response = await fetch(`${API_URL}/agendamentos/${colaboradorAtual}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: dataSelecionada })
-                });
+                       body: JSON.stringify({
+        colaborador: colaboradorAtual,
+        data: dataSelecionada
+    })
+    });
 
                 if (response.ok) {
                     agendamentosAtual[colaboradorAtual].push(dataSelecionada);
