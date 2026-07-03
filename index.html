@@ -848,24 +848,46 @@
             select.innerHTML = opcoesHtml;
         }
 
-        async function confirmarAdicionarData() {
-            const dataSelecionada = document.getElementById('dataSelect').value;
-            if (!dataSelecionada) {
-                alert('Selecione uma data');
-                return;
+async function confirmarAdicionarData() {
+    const dataSelecionada = document.getElementById('dataSelect').value;
+
+    if (!dataSelecionada) {
+        alert('Selecione uma data');
+        return;
+    }
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                colaborador: colaboradorAtual,
+                data: dataSelecionada
+            })
+        });
+
+        if (response.ok) {
+            if (!agendamentosAtual[colaboradorAtual]) {
+                agendamentosAtual[colaboradorAtual] = [];
             }
 
-     try {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify({
-      colaborador: colaboradorAtual,
-      data: dataSelecionada
-    })
-  });
+            agendamentosAtual[colaboradorAtual].push(dataSelecionada);
+
+            fecharModal();
+            renderizarAgendamentos();
+            renderizarCalendario();
+            mostrarMsg('✓ Data adicionada com sucesso!');
+        } else {
+            mostrarMsg('❌ Erro ao salvar na planilha', true);
+        }
+
+    } catch (erro) {
+        console.error("Erro ao salvar:", erro);
+        mostrarMsg('❌ Erro de conexão', true);
+    }
+}
 
   console.log("Salvou na planilha!");
 } catch (erro) {
