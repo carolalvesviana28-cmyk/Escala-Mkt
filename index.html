@@ -855,13 +855,22 @@
                 return;
             }
 
-            try {
-               fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({
-        colaborador: colaboradorAtual,
-        data: dataSelecionada
+     try {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json' 
+    },
+    body: JSON.stringify({
+      colaborador: colaboradorAtual,
+      data: dataSelecionada
+    })
+  });
+
+  console.log("Salvou na planilha!");
+} catch (erro) {
+  console.error("Erro ao salvar:", erro);
+}
     })
     });
 
