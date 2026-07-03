@@ -736,23 +736,25 @@
         let mesAtual = new Date();
 
         // Carregar dados da API
-        async function carregarAgendamentos() {
-            try {
-                const response = await fetch(`${API_URL}/agendamentos`);
-                if (response.ok) {
-                    agendamentosAtual = await response.json();
-                    renderizarCalendario();
-                } else {
-                    console.error('Erro ao carregar agendamentos');
-                    agendamentosAtual = JSON.parse(JSON.stringify(agendamentoPadrao));
-                    renderizarCalendario();
-                }
-            } catch (err) {
-                console.error('Erro na conexão:', err);
-                agendamentosAtual = JSON.parse(JSON.stringify(agendamentoPadrao));
-                renderizarCalendario();
+      async function carregarAgendamentos() {
+    try {
+        const response = await fetch(API_URL);
+        const dados = await response.json();
+
+        agendamentosAtual = {};
+
+        dados.forEach(item => {
+            if (!agendamentosAtual[item.colaborador]) {
+                agendamentosAtual[item.colaborador] = [];
             }
-        }
+            agendamentosAtual[item.colaborador].push(item.data);
+        });
+
+        renderizarCalendario();
+    } catch (err) {
+        console.error(err);
+    }
+}
 
         function selecionarColaborador() {
             colaboradorAtual = document.getElementById('colaboradorSelect').value;
