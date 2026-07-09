@@ -23,8 +23,7 @@ function inicializarDB() {
       'Carolina': [],
       'Daphne': [],
       'Luis': [],
-      'Jéssica': [],
-      'Sarah': []
+      'Jéssica': []
     };
     fs.writeFileSync(dbFile, JSON.stringify(dadosIniciais, null, 2));
   }
