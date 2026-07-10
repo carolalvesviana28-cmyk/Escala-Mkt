@@ -1,146 +1,1071 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ocupação - Escritório</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
 
-// Arquivo de banco de dados
-const dbFile = path.join(__dirname, 'agendamentos.json');
+        .header {
+            grid-column: 1 / -1;
+            margin-bottom: 20px;
+        }
 
-// Inicializar banco de dados se não existir
-function inicializarDB() {
-  if (!fs.existsSync(dbFile)) {
-    const dadosIniciais = {
-      'Augusto': [],
-      'Ana Carolina': [],
-      'Carolina': [],
-      'Daphne': [],
-      'Luis': [],
-      'Jéssica': []
-    };
-    fs.writeFileSync(dbFile, JSON.stringify(dadosIniciais, null, 2));
-  }
-}
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
 
-// Ler agendamentos
-function lerAgendamentos() {
-  try {
-    const dados = fs.readFileSync(dbFile, 'utf8');
-    return JSON.parse(dados);
-  } catch (err) {
-    console.error('Erro ao ler agendamentos:', err);
-    return {};
-  }
-}
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
 
-// Salvar agendamentos
-function salvarAgendamentos(dados) {
-  try {
-    fs.writeFileSync(dbFile, JSON.stringify(dados, null, 2));
-    return true;
-  } catch (err) {
-    console.error('Erro ao salvar agendamentos:', err);
-    return false;
-  }
-}
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-// ===== ROTAS =====
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
 
-// GET: Carregar todos os agendamentos
-app.get('/api/agendamentos', (req, res) => {
-  const agendamentos = lerAgendamentos();
-  res.json(agendamentos);
-});
+        .selector-box {
+            margin-bottom: 25px;
+        }
 
-// POST: Adicionar uma data para um colaborador
-app.post('/api/agendamentos', (req, res) => {
-  const { colaborador, data } = req.body;
+        .selector-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-  if (!colaborador || !data) {
-    return res.status(400).json({ erro: 'Colaborador e data são obrigatórios' });
-  }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
 
-  const agendamentos = lerAgendamentos();
+        select:hover {
+            border-color: #999;
+        }
 
-  if (!agendamentos[colaborador]) {
-    return res.status(400).json({ erro: 'Colaborador não existe' });
-  }
+        select:focus {
+            outline: none;
+            border-color: #0066ff;
+        }
 
-  // Verificar se a data já existe
-  if (agendamentos[colaborador].includes(data)) {
-    return res.status(400).json({ erro: 'Data já agendada para este colaborador' });
-  }
+        .agendamentos-container {
+            border: 3px solid #0099ff;
+            border-radius: 16px;
+            padding: 20px;
+            background: #f9f9f9;
+            max-height: 400px;
+            overflow-y: auto;
+        }
 
-  agendamentos[colaborador].push(data);
-  
-  if (salvarAgendamentos(agendamentos)) {
-    res.json({ sucesso: true, mensagem: 'Data adicionada com sucesso' });
-  } else {
-    res.status(500).json({ erro: 'Erro ao salvar' });
-  }
-});
+        .agendamentos-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-// DELETE: Remover uma data de um colaborador
-app.delete('/api/agendamentos/:colaborador/:data', (req, res) => {
-  const { colaborador, data } = req.params;
-  const dataDecodificada = decodeURIComponent(data);
+        .agendamento-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
 
-  const agendamentos = lerAgendamentos();
+        .agendamento-item:last-child {
+            border-bottom: none;
+        }
 
-  if (!agendamentos[colaborador]) {
-    return res.status(400).json({ erro: 'Colaborador não existe' });
-  }
+        .agendamento-data {
+            color: #333;
+            font-weight: 500;
+        }
 
-  const index = agendamentos[colaborador].indexOf(dataDecodificada);
-  
-  if (index === -1) {
-    return res.status(400).json({ erro: 'Data não encontrada' });
-  }
+        .cancelar-btn {
+            background: white;
+            border: 2px solid #ff6b6b;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ff6b6b;
+            transition: all 0.3s;
+            font-size: 18px;
+        }
 
-  agendamentos[colaborador].splice(index, 1);
+        .cancelar-btn:hover {
+            background: #ff6b6b;
+            color: white;
+        }
 
-  if (salvarAgendamentos(agendamentos)) {
-    res.json({ sucesso: true, mensagem: 'Data removida com sucesso' });
-  } else {
-    res.status(500).json({ erro: 'Erro ao salvar' });
-  }
-});
+        .cancelar-btn.marcado {
+            background: #ff6b6b;
+            color: white;
+        }
 
-// PUT: Atualizar todos os agendamentos de um colaborador
-app.put('/api/agendamentos/:colaborador', (req, res) => {
-  const { colaborador } = req.params;
-  const { datas } = req.body;
+        .agendamento-status {
+            color: #999;
+            font-size: 13px;
+            font-weight: 500;
+        }
 
-  if (!Array.isArray(datas)) {
-    return res.status(400).json({ erro: 'Datas deve ser um array' });
-  }
+        .adicionar-data-box {
+            border: 3px solid #00cc00;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            background: #f9f9f9;
+            margin-top: 25px;
+        }
 
-  const agendamentos = lerAgendamentos();
+        .adicionar-data-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-  if (!agendamentos[colaborador]) {
-    return res.status(400).json({ erro: 'Colaborador não existe' });
-  }
+        .plus-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #00cc00;
+            color: #00cc00;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
 
-  agendamentos[colaborador] = datas;
+        .plus-btn:hover {
+            background: #00cc00;
+            color: white;
+        }
 
-  if (salvarAgendamentos(agendamentos)) {
-    res.json({ sucesso: true, mensagem: 'Agendamentos atualizados com sucesso' });
-  } else {
-    res.status(500).json({ erro: 'Erro ao salvar' });
-  }
-});
+        .calendario-container {
+            border: 3px solid #9966ff;
+            border-radius: 16px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
 
-// Inicializar
-inicializarDB();
+        .calendario-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📁 Dados sendo salvos em: ${dbFile}`);
-});
+        .mes-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .mes-selector button {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .mes-selector button:hover {
+            background: #f0f0f0;
+        }
+
+        .mes-nome {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .calendario {
+            width: 100%;
+        }
+
+        .dias-semana {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .dia-semana {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: #999;
+            padding: 8px 0;
+            text-transform: uppercase;
+        }
+
+        .dias {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .dia {
+            aspect-ratio: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .dia:hover {
+            background: #f9f9f9;
+            border-color: #999;
+        }
+
+        .dia.vazio {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .dia.vazio:hover {
+            background: transparent;
+            border: none;
+        }
+
+        .dia.fim-semana {
+            background: #f0f0f0;
+            border-color: #ddd;
+            cursor: default;
+            color: #999;
+        }
+
+        .dia.fim-semana:hover {
+            background: #f0f0f0;
+            border-color: #ddd;
+        }
+
+        .dia.vagas-muitas {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-color: #4caf50;
+            cursor: pointer;
+        }
+
+        .dia.vagas-poucas {
+            background: linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%);
+            border-color: #fbc02d;
+            cursor: pointer;
+        }
+
+        .dia.vagas-nenhuma {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-color: #ef5350;
+            cursor: pointer;
+        }
+
+        .dia-numero {
+            font-weight: 700;
+        }
+
+        .dia-vagas {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .dia.fim-semana .dia-vagas {
+            color: #ccc;
+        }
+
+        .dia-traco {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancelar {
+            background: white;
+            color: #ff6b6b;
+            border: 2px solid #ff6b6b;
+        }
+
+        .btn-cancelar:hover {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-salvar {
+            background: #00cc00;
+            color: white;
+            border: 2px solid #00cc00;
+        }
+
+        .btn-salvar:hover {
+            background: #00aa00;
+            border-color: #00aa00;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.ativo {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .modal-acoes {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-acoes button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-modal-cancelar {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-modal-cancelar:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-modal-adicionar {
+            background: #00cc00;
+            color: white;
+        }
+
+        .btn-modal-adicionar:hover {
+            background: #00aa00;
+        }
+
+        .modal-quem {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-quem-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .modal-quem-data {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .lista-colaboradores {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .colaborador-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff5e1 0%, #ffebcc 100%);
+            border-left: 4px solid #ffc857;
+            border-radius: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .colaborador-item-vazio {
+            padding: 12px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        .modal-quem-fechar {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-fechar {
+            background: #666;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-fechar:hover {
+            background: #333;
+        }
+
+        .salvo-msg {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #00cc00;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .salvo-msg.ativo {
+            display: block;
+        }
+
+        .salvo-msg.erro {
+            background: #ff6b6b;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📍 Controle de Ocupação - Escritório</h1>
+        <p>Gerencie a escala do time de marketing (4 lugares disponíveis) - Conectado ao Supabase</p>
+    </div>
+
+    <div class="container">
+        <!-- SEÇÃO ESQUERDA: Colaborador e Agendamentos -->
+        <div class="section">
+            <div class="selector-box">
+                <div class="selector-label">Colaborador</div>
+                <select id="colaboradorSelect">
+                    <option value="">Selecione um colaborador</option>
+                    <option value="Augusto">🐴 Augusto</option>
+                    <option value="Ana Carolina">🤠 Ana Carolina</option>
+                    <option value="Carolina">👑 Carolina</option>
+                    <option value="Daphne">🐱 Daphne</option>
+                    <option value="Luis">💪 Luis</option>
+                    <option value="Jéssica">🌸 Jéssica</option>
+                </select>
+            </div>
+
+            <!-- Agendamentos -->
+            <div class="agendamentos-container">
+                <div class="section-title">Agendamentos</div>
+                <div id="agendamentosLista">
+                    <div style="text-align: center; color: #999; padding: 20px;">
+                        Selecione um colaborador
+                    </div>
+                </div>
+            </div>
+
+            <!-- Adicionar Data -->
+            <div class="adicionar-data-box">
+                <div class="adicionar-data-label">Datas</div>
+                <button class="plus-btn" onclick="abrirModalAdicionarData()">+</button>
+            </div>
+
+            <!-- Ações -->
+            <div class="acoes">
+                <button class="btn btn-cancelar" onclick="limpar()">✕ Cancelar</button>
+                <button class="btn btn-salvar" onclick="salvar()">✓ Salvar</button>
+            </div>
+        </div>
+
+        <!-- SEÇÃO DIREITA: Calendário -->
+        <div class="section">
+            <div class="calendario-container">
+                <div class="calendario-header">Calendário de Vagas Disponíveis</div>
+                
+                <div class="mes-selector">
+                    <button onclick="mesPrevio()">←</button>
+                    <div class="mes-nome" id="mesNome"></div>
+                    <button onclick="mesProximo()">→</button>
+                </div>
+
+                <div class="calendario" id="calendario"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar data -->
+    <div class="modal" id="modalAdicionar">
+        <div class="modal-content">
+            <div class="modal-title">Selecione uma data</div>
+            <select id="dataSelect" class="modal-select">
+                <option value="">Escolha uma data</option>
+            </select>
+            <div class="modal-acoes">
+                <button class="btn-modal-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-modal-adicionar" onclick="confirmarAdicionarData()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver quem trabalha -->
+    <div class="modal" id="modalQuem">
+        <div class="modal-quem">
+            <div class="modal-quem-title">👥 Quem trabalha neste dia?</div>
+            <div class="modal-quem-data" id="dataSelecionadaModal"></div>
+            <div class="lista-colaboradores" id="listaColaboradoresModal"></div>
+            <div class="modal-quem-fechar">
+                <button class="btn-fechar" onclick="fecharModalQuem()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagem de sucesso -->
+    <div class="salvo-msg" id="salvoMsg">✓ Alterações salvas com sucesso!</div>
+
+    <script>
+        // Credenciais do Supabase
+        const SUPABASE_URL = 'https://gyxvzoecfrnhfwejyukm.supabase.co/rest/v1';
+        const SUPABASE_KEY = 'sb_publishable_eX4_RltVEaP6SHQkLbURPg_eSl-OA8v';
+        const VAGAS_TOTAIS = 4;
+
+        // Variáveis globais
+        let agendamentosAtual = {
+            'Augusto': [],
+            'Ana Carolina': [],
+            'Carolina': [],
+            'Daphne': [],
+            'Luis': [],
+            'Jéssica': []
+        };
+        let agendamentosSalvos = JSON.parse(JSON.stringify(agendamentosAtual));
+        let colaboradorAtual = '';
+        let cancelamentosMarks = [];
+        let mesAtual = new Date();
+
+        // Função auxiliar para fazer requisições ao Supabase
+        async function supabaseRequest(method, path, body = null) {
+            const url = `${SUPABASE_URL}/rest/v1${path}`;
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(url, options);
+            return response;
+        }
+
+        // Carregar agendamentos do Supabase
+        async function carregarAgendamentos() {
+            try {
+                const response = await supabaseRequest('GET', '/agendamentos?select=*');
+                
+                if (!response.ok) {
+                    console.error('Erro ao carregar:', response.status);
+                    renderizarCalendario();
+                    return;
+                }
+
+                const dados = await response.json();
+
+                // Limpar dados atuais
+                agendamentosAtual = {
+                    'Augusto': [],
+                    'Ana Carolina': [],
+                    'Carolina': [],
+                    'Daphne': [],
+                    'Luis': [],
+                    'Jéssica': []
+                };
+
+                // Preencher com dados do Supabase
+                if (Array.isArray(dados)) {
+                    dados.forEach(row => {
+                        if (row.colaborador && row.data && agendamentosAtual[row.colaborador]) {
+                            agendamentosAtual[row.colaborador].push(row.data);
+                        }
+                    });
+                }
+
+                agendamentosSalvos = JSON.parse(JSON.stringify(agendamentosAtual));
+                renderizarCalendario();
+            } catch (err) {
+                console.error('Erro ao carregar:', err);
+                renderizarCalendario();
+            }
+        }
+
+        function selecionarColaborador() {
+            colaboradorAtual = document.getElementById('colaboradorSelect').value;
+            renderizarAgendamentos();
+        }
+
+        function renderizarAgendamentos() {
+            const container = document.getElementById('agendamentosLista');
+            
+            if (!colaboradorAtual) {
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Selecione um colaborador</div>';
+                return;
+            }
+
+            const datas = agendamentosAtual[colaboradorAtual] || [];
+            
+            if (datas.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Sem agendamentos</div>';
+                return;
+            }
+
+            const header = `
+                <div class="agendamentos-header">
+                    <div>Data</div>
+                    <div>Cancelar reserva</div>
+                    <div>Status</div>
+                </div>
+            `;
+
+            const items = datas.map((data, idx) => {
+                const ehMarcado = cancelamentosMarks.includes(`${colaboradorAtual}_${idx}`);
+                return `
+                    <div class="agendamento-item">
+                        <div class="agendamento-data">${data}</div>
+                        <button class="cancelar-btn ${ehMarcado ? 'marcado' : ''}" 
+                                onclick="toggleCancelamento('${colaboradorAtual}', ${idx})">✕</button>
+                        <div class="agendamento-status">Reservado</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = header + items;
+        }
+
+        function toggleCancelamento(colaborador, idx) {
+            const key = `${colaborador}_${idx}`;
+            if (cancelamentosMarks.includes(key)) {
+                cancelamentosMarks = cancelamentosMarks.filter(k => k !== key);
+            } else {
+                cancelamentosMarks.push(key);
+            }
+            renderizarAgendamentos();
+        }
+
+        function abrirModalAdicionarData() {
+            if (!colaboradorAtual) {
+                alert('Selecione um colaborador primeiro');
+                return;
+            }
+
+            gerarOpcoesDatas();
+            document.getElementById('modalAdicionar').classList.add('ativo');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalAdicionar').classList.remove('ativo');
+            document.getElementById('dataSelect').value = '';
+        }
+
+        function gerarOpcoesDatas() {
+            const select = document.getElementById('dataSelect');
+            const diasDoMes = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 0).getDate();
+            const datas = [];
+
+            for (let i = 1; i <= diasDoMes; i++) {
+                const data = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), i);
+                const diaSemana = data.getDay();
+                
+                if (diaSemana === 0 || diaSemana === 6) continue;
+
+                const dataFormatada = data.toLocaleDateString('pt-BR');
+                datas.push(dataFormatada);
+            }
+
+            const datasExistentes = agendamentosAtual[colaboradorAtual] || [];
+            const opcoesHtml = '<option value="">Escolha uma data</option>' + datas.map(d => {
+                const disabled = datasExistentes.includes(d);
+                return `<option value="${d}" ${disabled ? 'disabled' : ''}>${d}</option>`;
+            }).join('');
+
+            select.innerHTML = opcoesHtml;
+        }
+
+        async function confirmarAdicionarData() {
+            const dataSelecionada = document.getElementById('dataSelect').value;
+
+            if (!dataSelecionada) {
+                alert('Selecione uma data');
+                return;
+            }
+
+            try {
+                const response = await supabaseRequest('POST', '/agendamentos', {
+                    colaborador: colaboradorAtual,
+                    data: dataSelecionada
+                });
+
+                if (response.ok) {
+                    agendamentosAtual[colaboradorAtual].push(dataSelecionada);
+                    fecharModal();
+                    renderizarAgendamentos();
+                    renderizarCalendario();
+                    mostrarMsg('✓ Data adicionada com sucesso!');
+                } else {
+                    console.error('Erro:', response.status);
+                    mostrarMsg('❌ Erro ao adicionar data', true);
+                }
+
+            } catch (erro) {
+                console.error("Erro ao salvar:", erro);
+                mostrarMsg('❌ Erro de conexão', true);
+            }
+        }
+
+        function calcularVagasDisponiblesPorData(data) {
+            let ocupadas = 0;
+            
+            for (const [colab, datas] of Object.entries(agendamentosAtual)) {
+                if (datas.includes(data)) {
+                    ocupadas++;
+                }
+            }
+
+            return VAGAS_TOTAIS - ocupadas;
+        }
+
+        function obterColaboradoresParaData(data) {
+            const colaboradores = [];
+            for (const [colab, datas] of Object.entries(agendamentosAtual)) {
+                if (datas.includes(data)) {
+                    colaboradores.push(colab);
+                }
+            }
+            return colaboradores;
+        }
+
+        function abrirModalQuem(data) {
+            const colaboradores = obterColaboradoresParaData(data);
+            const container = document.getElementById('listaColaboradoresModal');
+            
+            document.getElementById('dataSelecionadaModal').textContent = data;
+            
+            if (colaboradores.length === 0) {
+                container.innerHTML = '<div class="colaborador-item-vazio">Ninguém trabalhando neste dia</div>';
+            } else {
+                const emojis = {
+                    'Augusto': '🐴',
+                    'Ana Carolina': '🤠',
+                    'Carolina': '👑',
+                    'Daphne': '🐱',
+                    'Luis': '💪',
+                    'Jéssica': '🌸'
+                };
+                
+                container.innerHTML = colaboradores.map(colab => 
+                    `<div class="colaborador-item">${emojis[colab]} ${colab}</div>`
+                ).join('');
+            }
+
+            document.getElementById('modalQuem').classList.add('ativo');
+        }
+
+        function fecharModalQuem() {
+            document.getElementById('modalQuem').classList.remove('ativo');
+        }
+
+        function renderizarCalendario() {
+            const container = document.getElementById('calendario');
+            const ano = mesAtual.getFullYear();
+            const mes = mesAtual.getMonth();
+            
+            document.getElementById('mesNome').textContent = 
+                mesAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            const diasDoMes = new Date(ano, mes + 1, 0).getDate();
+            const primeiroDia = new Date(ano, mes, 1).getDay();
+
+            let html = '<div class="dias-semana">';
+            ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].forEach(d => {
+                html += `<div class="dia-semana">${d}</div>`;
+            });
+            html += '</div><div class="dias">';
+
+            for (let i = 0; i < primeiroDia; i++) {
+                html += '<div class="dia vazio"></div>';
+            }
+
+            for (let i = 1; i <= diasDoMes; i++) {
+                const data = new Date(ano, mes, i);
+                const diaSemana = data.getDay();
+                const dataFormatada = data.toLocaleDateString('pt-BR');
+                
+                if (diaSemana === 0 || diaSemana === 6) {
+                    html += `
+                        <div class="dia fim-semana">
+                            <div class="dia-numero">${i}</div>
+                            <div class="dia-traco">—</div>
+                        </div>
+                    `;
+                } else {
+                    const vagas = calcularVagasDisponiblesPorData(dataFormatada);
+                    let classeVagas = '';
+                    
+                    if (vagas === 0) {
+                        classeVagas = 'vagas-nenhuma';
+                    } else if (vagas === 1) {
+                        classeVagas = 'vagas-poucas';
+                    } else {
+                        classeVagas = 'vagas-muitas';
+                    }
+                    
+                    html += `
+                        <div class="dia ${classeVagas}" onclick="abrirModalQuem('${dataFormatada}')">
+                            <div class="dia-numero">${i}</div>
+                            <div class="dia-vagas">${vagas}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function mesPrevio() {
+            mesAtual.setMonth(mesAtual.getMonth() - 1);
+            renderizarCalendario();
+            gerarOpcoesDatas();
+        }
+
+        function mesProximo() {
+            mesAtual.setMonth(mesAtual.getMonth() + 1);
+            renderizarCalendario();
+            gerarOpcoesDatas();
+        }
+
+        async function salvar() {
+            // Remover datas canceladas
+            for (const key of cancelamentosMarks) {
+                const [colaborador, idx] = key.split('_');
+                const data = agendamentosAtual[colaborador][idx];
+                
+                try {
+                    await supabaseRequest('DELETE', `/agendamentos?colaborador=eq.${colaborador}&data=eq.${data}`);
+                } catch (err) {
+                    console.error('Erro ao deletar:', err);
+                }
+            }
+
+            cancelamentosMarks = [];
+            
+            // Recarregar dados
+            await carregarAgendamentos();
+            
+            // Limpar seleção
+            document.getElementById('colaboradorSelect').value = '';
+            colaboradorAtual = '';
+            renderizarAgendamentos();
+            renderizarCalendario();
+
+            mostrarMsg('✓ Alterações salvas com sucesso!');
+        }
+
+        function limpar() {
+            if (confirm('Tem certeza que quer cancelar as alterações?')) {
+                cancelamentosMarks = [];
+                agendamentosAtual = JSON.parse(JSON.stringify(agendamentosSalvos));
+                colaboradorAtual = '';
+                document.getElementById('colaboradorSelect').value = '';
+                
+                renderizarAgendamentos();
+                renderizarCalendario();
+                
+                mostrarMsg('🔄 Alterações canceladas!');
+            }
+        }
+
+        function mostrarMsg(texto, isErro = false) {
+            const msg = document.getElementById('salvoMsg');
+            msg.textContent = texto;
+            msg.classList.remove('erro');
+            if (isErro) msg.classList.add('erro');
+            msg.classList.add('ativo');
+            setTimeout(() => msg.classList.remove('ativo'), 3000);
+        }
+
+        document.addEventListener('click', function(e) {
+            const modalAdicionar = document.getElementById('modalAdicionar');
+            const modalQuem = document.getElementById('modalQuem');
+            
+            if (e.target === modalAdicionar) {
+                fecharModal();
+            }
+            if (e.target === modalQuem) {
+                fecharModalQuem();
+            }
+        });
+
+        // Recarregar dados a cada 10 segundos
+        setInterval(() => {
+            carregarAgendamentos();
+        }, 10000);
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarAgendamentos();
+            document.getElementById('colaboradorSelect').addEventListener('change', selecionarColaborador);
+        });
+    </script>
+</body>
+</html>
