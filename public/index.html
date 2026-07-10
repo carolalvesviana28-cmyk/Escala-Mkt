@@ -670,13 +670,20 @@
     <div class="salvo-msg" id="salvoMsg">✓ Alterações salvas com sucesso!</div>
 
     <script>
-        // ⚠️ COLE SUA API URL AQUI (do SheetDB)
-        cconst SHEETDB_API = 'https://sheetdb.io/api/v1/8y0164zapywsb';
+        // API URL DO SHEETDB
+        const SHEETDB_API = 'https://sheetdb.io/api/v1/8y0164zapywsb';
         const VAGAS_TOTAIS = 4;
 
         // Variáveis globais
-        let agendamentosAtual = {};
-        let agendamentosSalvos = {};
+        let agendamentosAtual = {
+            'Augusto': [],
+            'Ana Carolina': [],
+            'Carolina': [],
+            'Daphne': [],
+            'Luis': [],
+            'Jéssica': []
+        };
+        let agendamentosSalvos = JSON.parse(JSON.stringify(agendamentosAtual));
         let colaboradorAtual = '';
         let cancelamentosMarks = [];
         let mesAtual = new Date();
@@ -685,9 +692,16 @@
         async function carregarAgendamentos() {
             try {
                 const response = await fetch(SHEETDB_API);
+                
+                if (!response.ok) {
+                    console.error('Erro da API:', response.status);
+                    renderizarCalendario();
+                    return;
+                }
+
                 const dados = await response.json();
 
-                // Reorganizar dados no formato que a gente usa
+                // Limpar dados atuais
                 agendamentosAtual = {
                     'Augusto': [],
                     'Ana Carolina': [],
@@ -697,18 +711,21 @@
                     'Jéssica': []
                 };
 
-                // Preencher com dados da planilha
-                dados.forEach(row => {
-                    if (row.colaborador && row.data && agendamentosAtual[row.colaborador]) {
-                        agendamentosAtual[row.colaborador].push(row.data);
-                    }
-                });
+                // Preencher com dados da planilha (se houver)
+                if (Array.isArray(dados)) {
+                    dados.forEach(row => {
+                        if (row.colaborador && row.data && agendamentosAtual[row.colaborador]) {
+                            agendamentosAtual[row.colaborador].push(row.data);
+                        }
+                    });
+                }
 
                 agendamentosSalvos = JSON.parse(JSON.stringify(agendamentosAtual));
                 renderizarCalendario();
             } catch (err) {
                 console.error('Erro ao carregar:', err);
-                mostrarMsg('❌ Erro ao carregar dados', true);
+                // Mesmo com erro, renderiza o calendário vazio
+                renderizarCalendario();
             }
         }
 
@@ -974,7 +991,7 @@
                 const data = agendamentosAtual[colaborador][idx];
                 
                 try {
-                    await fetch(`${SHEETDB_API}/colaborador/${colaborador}/data/${encodeURIComponent(data)}`, {
+                    await fetch(`${SHEETDB_API}/search?colaborador=${colaborador}&data=${encodeURIComponent(data)}`, {
                         method: 'DELETE'
                     });
                 } catch (err) {
@@ -1031,7 +1048,7 @@
             }
         });
 
-        // Recarregar dados a cada 10 segundos pra sincronizar com outros usuários
+        // Recarregar dados a cada 10 segundos
         setInterval(() => {
             carregarAgendamentos();
         }, 10000);
