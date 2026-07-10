@@ -555,20 +555,6 @@
             background: #ff6b6b;
         }
 
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         @keyframes slideIn {
             from {
                 transform: translateX(400px);
@@ -596,7 +582,7 @@
 <body>
     <div class="header">
         <h1>📍 Controle de Ocupação - Escritório</h1>
-        <p>Gerencie a escala do time de marketing (4 lugares disponíveis)</p>
+        <p>Gerencie a escala do time de marketing (4 lugares disponíveis) - Conectado ao Google Sheets</p>
     </div>
 
     <div class="container">
@@ -684,7 +670,8 @@
     <div class="salvo-msg" id="salvoMsg">✓ Alterações salvas com sucesso!</div>
 
     <script>
-        const API_URL = '/api/agendamentos';
+        // ⚠️ COLE SUA API URL AQUI (do SheetDB)
+        const SHEETDB_API = 'https://sheetdb.io/api/v1/https://sheetdb.io/api/v1/1m60m31utvp7w';
         const VAGAS_TOTAIS = 4;
 
         // Variáveis globais
@@ -694,13 +681,30 @@
         let cancelamentosMarks = [];
         let mesAtual = new Date();
 
-        // Carregar agendamentos do servidor
+        // Carregar agendamentos do Google Sheets via SheetDB
         async function carregarAgendamentos() {
             try {
-                const response = await fetch(API_URL);
+                const response = await fetch(SHEETDB_API);
                 const dados = await response.json();
-                agendamentosAtual = JSON.parse(JSON.stringify(dados));
-                agendamentosSalvos = JSON.parse(JSON.stringify(dados));
+
+                // Reorganizar dados no formato que a gente usa
+                agendamentosAtual = {
+                    'Augusto': [],
+                    'Ana Carolina': [],
+                    'Carolina': [],
+                    'Daphne': [],
+                    'Luis': [],
+                    'Jéssica': []
+                };
+
+                // Preencher com dados da planilha
+                dados.forEach(row => {
+                    if (row.colaborador && row.data && agendamentosAtual[row.colaborador]) {
+                        agendamentosAtual[row.colaborador].push(row.data);
+                    }
+                });
+
+                agendamentosSalvos = JSON.parse(JSON.stringify(agendamentosAtual));
                 renderizarCalendario();
             } catch (err) {
                 console.error('Erro ao carregar:', err);
@@ -809,7 +813,7 @@
             }
 
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch(SHEETDB_API, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json' 
@@ -878,8 +882,7 @@
                     'Carolina': '👑',
                     'Daphne': '🐱',
                     'Luis': '💪',
-                    'Jéssica': '🌸',
-                    'Sarah': '🐦'
+                    'Jéssica': '🌸'
                 };
                 
                 container.innerHTML = colaboradores.map(colab => 
@@ -971,7 +974,7 @@
                 const data = agendamentosAtual[colaborador][idx];
                 
                 try {
-                    await fetch(`${API_URL}/${colaborador}/${encodeURIComponent(data)}`, {
+                    await fetch(`${SHEETDB_API}/colaborador/${colaborador}/data/${encodeURIComponent(data)}`, {
                         method: 'DELETE'
                     });
                 } catch (err) {
@@ -1027,6 +1030,11 @@
                 fecharModalQuem();
             }
         });
+
+        // Recarregar dados a cada 10 segundos pra sincronizar com outros usuários
+        setInterval(() => {
+            carregarAgendamentos();
+        }, 10000);
 
         // Inicializar na carga da página
         document.addEventListener('DOMContentLoaded', function() {
